@@ -10,14 +10,18 @@
 , termcolor
 # , grpcio
 , six, wrapt, protobuf-python, tensorflow-estimator-bin
-, dill, flatbuffers-python, portpicker, tblib, typing-extensions
+, dill
+# , flatbuffers-python
+, portpicker, tblib, typing-extensions
 # Common deps
 , git, pybind11, which, binutils, glibcLocales, cython, perl, coreutils
 # Common libraries
 , jemalloc, mpi, gast
 # , grpc
 , sqlite, boringssl, jsoncpp, nsync
-, curl, snappy, flatbuffers-core, lmdb-core, icu, double-conversion, libpng, libjpeg_turbo, giflib, protobuf-core
+, curl, snappy
+# , flatbuffers-core
+, icu, double-conversion, libpng, libjpeg_turbo, giflib, protobuf-core
 # Upstream by default includes cuda support since tensorflow 1.15. We could do
 # that in nix as well. It would make some things easier and less confusing, but
 # it would also make the default tensorflow package unfree. See
@@ -104,7 +108,7 @@ let
 
   tfFeature = x: if x then "1" else "0";
 
-  version = "2.11.1";
+  version = "2.13.0";
   variant = lib.optionalString cudaSupport "-gpu";
   pname = "tensorflow${variant}";
 
@@ -114,7 +118,7 @@ let
       # absl-py
       astunparse
       dill
-      flatbuffers-python
+      # flatbuffers-python
       gast
       google-pasta
       # grpcio
@@ -213,7 +217,7 @@ let
       owner = "tensorflow";
       repo = "tensorflow";
       rev = "refs/tags/v${version}";
-      hash = "sha256-q59cUW6613byHk4LGl+sefO5czLSWxOrSyLbJ1pkNEY=";
+      hash = "sha256-Rq5pAVmxlWBVnph20fkAwbfy+iuBNlfFy14poDPd5h0=";
     };
 
     # On update, it can be useful to steal the changes from gentoo
@@ -234,7 +238,7 @@ let
       boringssl
       curl
       double-conversion
-      flatbuffers-core
+      # flatbuffers-core
       giflib
       # grpc
       # Necessary to fix the "`GLIBCXX_3.4.30' not found" error
@@ -242,7 +246,6 @@ let
       jsoncpp
       libjpeg_turbo
       libpng
-      lmdb-core
       (pybind11.overridePythonAttrs (_: { inherit stdenv; }))
       snappy
       sqlite
@@ -282,7 +285,8 @@ let
       "cython"
       "dill_archive"
       "double_conversion"
-      "flatbuffers"
+      # flatbuffers 23.1.21 is expected
+      # "flatbuffers"
       "functools32_archive"
       "gast_archive"
       "gif"
@@ -290,7 +294,6 @@ let
       "icu"
       "jsoncpp_git"
       "libjpeg_turbo"
-      "lmdb"
       "nasm"
       "opt_einsum_archive"
       "org_sqlite"
@@ -402,10 +405,10 @@ let
       sha256 = {
       x86_64-linux = if cudaSupport
         then "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-        else "sha256-Vw7gs2pUZduSbMeubYScBf6Kol6sMyY3zcXNvIKgegs=";
-      aarch64-linux = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB=";
-      x86_64-darwin = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC=";
-      aarch64-darwin = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD=";
+        else "sha256-o27yVljNno2HNDhT+GodYBMZrwwbc5Z+W0RX5SLDP8w=";
+      aarch64-linux = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG=";
+      x86_64-darwin = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJ=";
+      aarch64-darwin = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=";
       }.${stdenv.hostPlatform.system} or (throw "unsupported system ${stdenv.hostPlatform.system}");
     };
 
@@ -454,8 +457,6 @@ let
       license = licenses.asl20;
       maintainers = with maintainers; [ abbradar ];
       platforms = with platforms; linux ++ darwin;
-      # More vulnerabilities in 2.11.1 really; https://github.com/tensorflow/tensorflow/releases
-      knownVulnerabilities = [ "CVE-2023-33976" ];
       broken = !(xlaSupport -> cudaSupport) || python.pythonVersion == "3.11";
     } // lib.optionalAttrs stdenv.isDarwin {
       timeout = 86400; # 24 hours
@@ -499,7 +500,7 @@ in buildPythonPackage {
   propagatedBuildInputs = [
     # absl-py
     astunparse
-    flatbuffers-python
+    # flatbuffers-python
     gast
     google-pasta
     # grpcio
