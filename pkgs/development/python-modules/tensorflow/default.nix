@@ -454,6 +454,8 @@ let
       license = licenses.asl20;
       maintainers = with maintainers; [ abbradar ];
       platforms = with platforms; linux ++ darwin;
+      # More vulnerabilities in 2.11.1 really; https://github.com/tensorflow/tensorflow/releases
+      knownVulnerabilities = [ "CVE-2023-33976" ];
       broken = !(xlaSupport -> cudaSupport) || python.pythonVersion == "3.11";
     } // lib.optionalAttrs stdenv.isDarwin {
       timeout = 86400; # 24 hours
