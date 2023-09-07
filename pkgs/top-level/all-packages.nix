@@ -234,6 +234,8 @@ with pkgs;
 
   alda = callPackage ../development/interpreters/alda { };
 
+  alicevision = callPackage ../applications/graphics/alicevision { };
+
   align = callPackage ../tools/text/align { };
 
   alire = callPackage ../development/tools/build-managers/alire { };

@@ -1,0 +1,277 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 1ec9e53ee..493b226ad 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -871,7 +871,7 @@ else()
+       set(SPHINX_HTML_DIR "${CMAKE_CURRENT_BINARY_DIR}/htmlDoc")
+ 
+       configure_file(
+-        "${CMAKE_CURRENT_SOURCE_DIR}/../docs/sphinx/rst/conf.py"
++        "${CMAKE_CURRENT_SOURCE_DIR}/../docs/sphinx/conf.py"
+         "${CMAKE_CURRENT_BINARY_DIR}/conf.py"
+         @ONLY
+       )
+@@ -879,7 +879,7 @@ else()
+       add_custom_target(doc ALL
+         ${SPHINX_EXECUTABLE}
+         -b html
+-        "${CMAKE_CURRENT_SOURCE_DIR}/../docs/sphinx/rst"
++        "${CMAKE_CURRENT_SOURCE_DIR}/../docs/sphinx"
+         "${SPHINX_HTML_DIR}"
+         COMMENT "Building HTML documentation with Sphinx")
+ 
+diff --git a/src/aliceVision/linearProgramming/CMakeLists.txt b/src/aliceVision/linearProgramming/CMakeLists.txt
+index bc4401273..72765ed4e 100644
+--- a/src/aliceVision/linearProgramming/CMakeLists.txt
++++ b/src/aliceVision/linearProgramming/CMakeLists.txt
+@@ -10,9 +10,9 @@ set(linearProgramming_files_headers
+ set(aliceVision_linearProgramming_DEPS
+   aliceVision_numeric
+   aliceVision_system
+-  Coin::Clp        # clp + solver wrapper
+-  Coin::CoinUtils  # container tools
+-  Coin::Osi        # generic LP
++  ${CLP_LIBRARIES}        # clp + solver wrapper
++  ${COINUTILS_LIBRARIES}  # container tools
++  ${OSI_LIBRARIES}        # generic LP
+ )
+ 
+ if (NOT MOSEK_FOUND)
+diff --git a/src/cmake/FindClp.cmake b/src/cmake/FindClp.cmake
+new file mode 100644
+index 000000000..8a69c2344
+--- /dev/null
++++ b/src/cmake/FindClp.cmake
+@@ -0,0 +1,69 @@
++###########################################################
++#                  Find Clp Library
++#----------------------------------------------------------
++
++FIND_PATH(CLP_DIR ClpConfig.h
++    HINTS "${CLP_ROOT}" "$ENV{CLP_ROOT}" "${CLP_INCLUDE_DIR_HINTS}"
++    PATHS "$ENV{PROGRAMFILES}" "$ENV{PROGRAMW6432}" "/usr" "/usr/local"
++    PATH_SUFFIXES coin
++    DOC "Root directory of CLP includes")
++
++##====================================================
++## Include CLP library
++##----------------------------------------------------
++IF(EXISTS "${CLP_DIR}" AND NOT "${CLP_DIR}" STREQUAL "")
++        SET(CLP_FOUND TRUE)
++        SET(CLP_INCLUDE_DIRS ${CLP_DIR})
++        SET(CLP_DIR "${CLP_DIR}" CACHE PATH "" FORCE)
++        MARK_AS_ADVANCED(CLP_DIR)
++
++        # Extract Clp version from ClpConfig.h
++        SET(CLP_VERSION_FILE ${CLP_INCLUDE_DIRS}/ClpConfig.h)
++        # Extract Clp version from alternative config_clp_default.h
++        IF (EXISTS ${CLP_INCLUDE_DIRS}/config_clp_default.h)
++          SET(CLP_VERSION_FILE ${CLP_INCLUDE_DIRS}/config_clp_default.h)
++        ENDIF()
++        IF (NOT EXISTS ${CLP_VERSION_FILE})
++                CLP_REPORT_NOT_FOUND(
++                  "Could not find file: ${CLP_VERSION_FILE} "
++                  "containing version information in Clp install located at: "
++                  "${CLP_INCLUDE_DIRS}.")
++        ELSE (NOT EXISTS ${CLP_VERSION_FILE})
++            FILE(READ ${CLP_VERSION_FILE} CLP_VERSION_FILE_CONTENTS)
++
++                STRING(REGEX MATCH "#define CLP_VERSION_MAJOR [0-9]+"
++                  CLP_VERSION_MAJOR "${CLP_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define CLP_VERSION_MAJOR ([0-9]+)" "\\1"
++                  CLP_VERSION_MAJOR "${CLP_VERSION_MAJOR}")
++
++                STRING(REGEX MATCH "#define CLP_VERSION_MINOR [0-9]+"
++                  CLP_VERSION_MINOR "${CLP_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define CLP_VERSION_MINOR ([0-9]+)" "\\1"
++                  CLP_VERSION_MINOR "${CLP_VERSION_MINOR}")
++
++                STRING(REGEX MATCH "#define CLP_VERSION_RELEASE [0-9]+"
++                  CLP_VERSION_RELEASE "${CLP_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define CLP_VERSION_RELEASE ([0-9]+)" "\\1"
++                  CLP_VERSION_RELEASE "${CLP_VERSION_RELEASE}")
++
++                SET(CLP_VERSION "${CLP_VERSION_MAJOR}.${CLP_VERSION_MINOR}.${CLP_VERSION_RELEASE}")
++        ENDIF (NOT EXISTS ${CLP_VERSION_FILE})
++        SET(CLP_INCLUDE_DIR ${CLP_DIR})
++
++        FIND_LIBRARY(CLP_LIBRARY NAMES Clp)
++        FIND_LIBRARY(CLPSOLVER_LIBRARY NAMES ClpSolver)
++        FIND_LIBRARY(OSICLP_LIBRARY NAMES OsiClp)
++
++        # locate Clp libraries
++        IF(DEFINED CLP_LIBRARY AND DEFINED CLPSOLVER_LIBRARY AND DEFINED OSICLP_LIBRARY)
++          SET(CLP_LIBRARIES ${CLP_LIBRARY} ${CLPSOLVER_LIBRARY} ${OSICLP_LIBRARY})
++        ENDIF()
++
++        MESSAGE(STATUS "Clp ${CLP_VERSION} found (include: ${CLP_INCLUDE_DIRS})")
++ELSE()
++  MESSAGE(STATUS "You are attempting to build without Clp. "
++          "Please use cmake variable -DCLP_INCLUDE_DIR_HINTS:STRING=\"PATH\" "
++          "or CLP_INCLUDE_DIR_HINTS env. variable to a valid Clp path. "
++          "Or install last Clp version.")
++ENDIF()
++##====================================================
+diff --git a/src/cmake/FindCoinUtils.cmake b/src/cmake/FindCoinUtils.cmake
+new file mode 100644
+index 000000000..5b64ce14c
+--- /dev/null
++++ b/src/cmake/FindCoinUtils.cmake
+@@ -0,0 +1,67 @@
++###########################################################
++#                  Find CoinUtils Library
++#----------------------------------------------------------
++
++FIND_PATH(COINUTILS_DIR CoinUtilsConfig.h
++    HINTS "${COINUTILS_ROOT}" "$ENV{COINUTILS_ROOT}" "${COINUTILS_INCLUDE_DIR_HINTS}"
++    PATHS "$ENV{PROGRAMFILES}" "$ENV{PROGRAMW6432}" "/usr" "/usr/local"
++    PATH_SUFFIXES coin
++    DOC "Root directory of COINUTILS includes")
++
++##====================================================
++## Include COINUTILS library
++##----------------------------------------------------
++IF(EXISTS "${COINUTILS_DIR}" AND NOT "${COINUTILS_DIR}" STREQUAL "")
++        SET(COINUTILS_FOUND TRUE)
++        SET(COINUTILS_INCLUDE_DIRS ${COINUTILS_DIR})
++        SET(COINUTILS_DIR "${COINUTILS_DIR}" CACHE PATH "" FORCE)
++        MARK_AS_ADVANCED(COINUTILS_DIR)
++
++        # Extract CoinUtils version from CoinUtilsConfig.h
++        SET(COINUTILS_VERSION_FILE ${COINUTILS_INCLUDE_DIRS}/CoinUtilsConfig.h)
++        # Extract CoinUtils version from alternative config_coinutils_default.h
++        IF (EXISTS ${COINUTILS_INCLUDE_DIRS}/config_coinutils_default.h)
++          SET(COINUTILS_VERSION_FILE ${COINUTILS_INCLUDE_DIRS}/config_coinutils_default.h)
++        ENDIF()
++        IF (NOT EXISTS ${COINUTILS_VERSION_FILE})
++                COINUTILS_REPORT_NOT_FOUND(
++                  "Could not find file: ${COINUTILS_VERSION_FILE} "
++                  "containing version information in CoinUtils install located at: "
++                  "${COINUTILS_INCLUDE_DIRS}.")
++        ELSE (NOT EXISTS ${COINUTILS_VERSION_FILE})
++            FILE(READ ${COINUTILS_VERSION_FILE} COINUTILS_VERSION_FILE_CONTENTS)
++
++                STRING(REGEX MATCH "#define COINUTILS_VERSION_MAJOR [0-9]+"
++                  COINUTILS_VERSION_MAJOR "${COINUTILS_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define COINUTILS_VERSION_MAJOR ([0-9]+)" "\\1"
++                  COINUTILS_VERSION_MAJOR "${COINUTILS_VERSION_MAJOR}")
++
++                STRING(REGEX MATCH "#define COINUTILS_VERSION_MINOR [0-9]+"
++                  COINUTILS_VERSION_MINOR "${COINUTILS_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define COINUTILS_VERSION_MINOR ([0-9]+)" "\\1"
++                  COINUTILS_VERSION_MINOR "${COINUTILS_VERSION_MINOR}")
++
++                STRING(REGEX MATCH "#define COINUTILS_VERSION_RELEASE [0-9]+"
++                  COINUTILS_VERSION_RELEASE "${COINUTILS_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define COINUTILS_VERSION_RELEASE ([0-9]+)" "\\1"
++                  COINUTILS_VERSION_RELEASE "${COINUTILS_VERSION_RELEASE}")
++
++                SET(COINUTILS_VERSION "${COINUTILS_VERSION_MAJOR}.${COINUTILS_VERSION_MINOR}.${COINUTILS_VERSION_RELEASE}")
++        ENDIF (NOT EXISTS ${COINUTILS_VERSION_FILE})
++        SET(COINUTILS_INCLUDE_DIR ${COINUTILS_DIR})
++
++        FIND_LIBRARY(COINUTILS_LIBRARY NAMES CoinUtils)
++
++        # locate CoinUtils libraries
++        IF(DEFINED COINUTILS_LIBRARY)
++          SET(COINUTILS_LIBRARIES ${COINUTILS_LIBRARY})
++        ENDIF()
++
++        MESSAGE(STATUS "CoinUtils ${COINUTILS_VERSION} found (include: ${COINUTILS_INCLUDE_DIRS})")
++ELSE()
++  MESSAGE(STATUS "You are attempting to build without CoinUtils. "
++          "Please use cmake variable -DCOINUTILS_INCLUDE_DIR_HINTS:STRING=\"PATH\" "
++          "or COINUTILS_INCLUDE_DIR_HINTS env. variable to a valid CoinUtils path. "
++          "Or install last CoinUtils version.")
++ENDIF()
++##====================================================
+diff --git a/src/cmake/FindOsi.cmake b/src/cmake/FindOsi.cmake
+new file mode 100644
+index 000000000..9799ad297
+--- /dev/null
++++ b/src/cmake/FindOsi.cmake
+@@ -0,0 +1,67 @@
++###########################################################
++#                  Find Osi Library
++#----------------------------------------------------------
++
++FIND_PATH(OSI_DIR OsiConfig.h
++    HINTS "${OSI_ROOT}" "$ENV{OSI_ROOT}" "${OSI_INCLUDE_DIR_HINTS}"
++    PATHS "$ENV{PROGRAMFILES}" "$ENV{PROGRAMW6432}" "/usr" "/usr/local"
++    PATH_SUFFIXES coin
++    DOC "Root directory of OSI includes")
++
++##====================================================
++## Include OSI library
++##----------------------------------------------------
++IF(EXISTS "${OSI_DIR}" AND NOT "${OSI_DIR}" STREQUAL "")
++        SET(OSI_FOUND TRUE)
++        SET(OSI_INCLUDE_DIRS ${OSI_DIR})
++        SET(OSI_DIR "${OSI_DIR}" CACHE PATH "" FORCE)
++        MARK_AS_ADVANCED(OSI_DIR)
++
++        # Extract Osi version from OsiConfig.h
++        SET(OSI_VERSION_FILE ${OSI_INCLUDE_DIRS}/OsiConfig.h)
++        # Extract Osi version from alternative config_osi_default.h
++        IF (EXISTS ${OSI_INCLUDE_DIRS}/config_osi_default.h)
++          SET(OSI_VERSION_FILE ${OSI_INCLUDE_DIRS}/config_osi_default.h)
++        ENDIF()
++        IF (NOT EXISTS ${OSI_VERSION_FILE})
++                OSI_REPORT_NOT_FOUND(
++                  "Could not find file: ${OSI_VERSION_FILE} "
++                  "containing version information in Osi install located at: "
++                  "${OSI_INCLUDE_DIRS}.")
++        ELSE (NOT EXISTS ${OSI_VERSION_FILE})
++            FILE(READ ${OSI_VERSION_FILE} OSI_VERSION_FILE_CONTENTS)
++
++                STRING(REGEX MATCH "#define OSI_VERSION_MAJOR [0-9]+"
++                  OSI_VERSION_MAJOR "${OSI_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define OSI_VERSION_MAJOR ([0-9]+)" "\\1"
++                  OSI_VERSION_MAJOR "${OSI_VERSION_MAJOR}")
++
++                STRING(REGEX MATCH "#define OSI_VERSION_MINOR [0-9]+"
++                  OSI_VERSION_MINOR "${OSI_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define OSI_VERSION_MINOR ([0-9]+)" "\\1"
++                  OSI_VERSION_MINOR "${OSI_VERSION_MINOR}")
++
++                STRING(REGEX MATCH "#define OSI_VERSION_RELEASE [0-9]+"
++                  OSI_VERSION_RELEASE "${OSI_VERSION_FILE_CONTENTS}")
++                STRING(REGEX REPLACE "#define OSI_VERSION_RELEASE ([0-9]+)" "\\1"
++                  OSI_VERSION_RELEASE "${OSI_VERSION_RELEASE}")
++
++                SET(OSI_VERSION "${OSI_VERSION_MAJOR}.${OSI_VERSION_MINOR}.${OSI_VERSION_RELEASE}")
++        ENDIF (NOT EXISTS ${OSI_VERSION_FILE})
++        SET(OSI_INCLUDE_DIR ${OSI_DIR})
++
++        FIND_LIBRARY(OSI_LIBRARY NAMES Osi)
++
++        # locate Osi libraries
++        IF(DEFINED OSI_LIBRARY)
++          SET(OSI_LIBRARIES ${OSI_LIBRARY})
++        ENDIF()
++
++        MESSAGE(STATUS "Osi ${OSI_VERSION} found (include: ${OSI_INCLUDE_DIRS})")
++ELSE()
++  MESSAGE(STATUS "You are attempting to build without Osi. "
++          "Please use cmake variable -DOSI_INCLUDE_DIR_HINTS:STRING=\"PATH\" "
++          "or OSI_INCLUDE_DIR_HINTS env. variable to a valid Osi path. "
++          "Or install last Osi version.")
++ENDIF()
++##====================================================
+diff --git a/src/software/utils/CMakeLists.txt b/src/software/utils/CMakeLists.txt
+index 61dd147a2..eacb63366 100644
+--- a/src/software/utils/CMakeLists.txt
++++ b/src/software/utils/CMakeLists.txt
+@@ -219,9 +219,9 @@ alicevision_add_software(aliceVision_sfmColorHarmonize
+         aliceVision_sfmData
+         aliceVision_sfmDataIO
+         aliceVision_colorHarmonization
+-        Coin::Clp
+-        Coin::CoinUtils
+-        Coin::Osi
++        ${CLP_LIBRARIES}
++        ${COINUTILS_LIBRARIES}
++        ${OSI_LIBRARIES}
+         Boost::program_options
+         Boost::filesystem
+         Boost::boost
