@@ -5,7 +5,7 @@
 , bzip2
 , cmake
 , curl
-, fetchFromGitHub
+, fetchgit
 , ffmpeg
 , ffmpeg_4
 , fluidsynth
@@ -45,7 +45,16 @@ let
   hashesFile = lib.importJSON ./hashes.json;
 
   getCoreSrc = core:
-    fetchFromGitHub (builtins.getAttr core hashesFile);
+    let
+      attrs = builtins.getAttr core hashesFile;
+    in
+      fetchgit (
+        (
+          lib.attrsets.removeAttrs attrs [ "owner" "repo" ]
+        ) // {
+          url = "https://github.com/${attrs.owner}/${attrs.repo}";
+        }
+      );
 
   mkLibretroCore =
     { core
