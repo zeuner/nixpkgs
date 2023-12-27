@@ -1,4 +1,4 @@
-{ lib, stdenv, fetchurl, alsa-lib, libX11, makeWrapper, tcl, tk }:
+{ lib, stdenv, fetchurl, alsa-lib, alsa-plugins, libX11, makeWrapper, tcl, tk }:
 
 stdenv.mkDerivation  rec {
   pname = "vkeybd";
@@ -18,6 +18,11 @@ stdenv.mkDerivation  rec {
   '';
 
   makeFlags = [ "TKLIB=-l${tk.libPrefix}" "TCLLIB=-l${tcl.libPrefix}" ];
+
+  postFixup = ''
+    wrapProgram $out/bin/vkeybd \
+      --set-default ALSA_PLUGIN_DIR ${alsa-plugins}/lib/alsa-lib
+  '';
 
   meta = with lib; {
     description = "Virtual MIDI keyboard";
