@@ -1,5 +1,6 @@
 { lib
 , stdenv
+, config
 , buildPythonPackage
 , fetchPypi
 
@@ -22,7 +23,7 @@
 , cudatoolkit
 , ocl-icd
 , opencl-headers
-, gpuSupport ? stdenv.isLinux
+, gpuSupport ? config.cudaSupport
 }:
 
 buildPythonPackage rec {
